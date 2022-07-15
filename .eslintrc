@@ -1,0 +1,14 @@
+{
+  "extends": "@antfu",
+  "rules": {
+    "curly": [
+      "error",
+      "all"
+    ],
+    "@typescript-eslint/brace-style": [
+      "error",
+      "1tbs"
+    ],
+    "array-bracket-newline":["error", { "multiline": true }]
+  }
+}
