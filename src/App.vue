@@ -4,15 +4,19 @@ import { computed, reactive, ref } from 'vue'
 
 import { useToast } from 'vue-toast-notification'
 import 'vue-toast-notification/dist/theme-sugar.css'
-import { BG_COLOR, GRID_SIZE, GameStatus, INIT_BG_COLOR } from './constants'
-import type { CountType, Grid } from './utils'
+import { BG_COLOR, GameStatus, INIT_BG_COLOR } from './constants'
 import {
   type ColorType,
+  type Grid,
+  getDeepCloneGridCount,
   getInitGame,
-  getIsEmptySquare,
   getIsWinOrLoss,
+  getMaxCount,
+  getNextGrid,
   getRandomCount,
   getTransformColor,
+  showGameStatusToast,
+  updateSquare,
 } from './utils'
 
 const toast = useToast({ position: 'top' })
@@ -25,178 +29,118 @@ const record = reactive({
 })
 
 const currentMaxCount = computed(() => {
-  return $grid.value.reduce<CountType>((initCount, line) => {
-    return line.reduce((p, c) => {
-      if (getIsEmptySquare(c.count)) {
-        return p
-      }
-      return c.count > p ? c.count : p
-    }, initCount)
-  }, 2)
+  return getMaxCount($grid.value)
 })
 const tone = computed(() => ({
   mainColor: `${BG_COLOR[currentMaxCount.value]}`,
   inverseColor: `${getTransformColor(BG_COLOR[currentMaxCount.value])}`,
 }))
 
-function showGameStatusToast(status: GameStatus) {
-  toast.clear()
-  switch (status) {
-    case GameStatus.win:
-      toast.success('恭喜你，你赢了!')
-      break
-    case GameStatus.loss:
-      toast.default('貌似无路可走了!')
-      break
-
-    default:
-      break
-  }
-}
-
-function updateSquare(y: number, x: number, count: CountType | null) {
-  $grid.value[y][x].count = count
-  $grid.value[y][x].bg = getIsEmptySquare(count)
-    ? INIT_BG_COLOR
-    : BG_COLOR[count]
-}
-
-function moveHandle(
-  [currentY, currentX]: [number, number],
-  [nextY, nextX]: [number, number]
-) {
-  if (getIsEmptySquare($grid.value[nextY][nextX].count)) {
-    updateSquare(nextY, nextX, $grid.value[currentY][currentX].count)
-    updateSquare(currentY, currentX, null)
-    return false
-  }
-  if (
-    $grid.value[currentY][currentX].count === $grid.value[nextY][nextX].count
-  ) {
-    const count = ($grid.value[currentY][currentX].count! << 1) as CountType
-    updateSquare(nextY, nextX, count)
-    updateSquare(currentY, currentX, null)
-
-    record.score += count
-  }
-  return true
-}
-function move(dir: Direction) {
+let timer: number
+/** 自动操作 */
+function autoMove() {
   if (gameStatus.value !== GameStatus.normal) {
-    showGameStatusToast(gameStatus.value)
+    clearTimeout(timer)
+    return
+  }
+  timer = setTimeout(() => {
+    const nextGrid: {
+      direction: Direction
+      grid: Grid
+      score: number
+    }[] = []
+    let i = 0
+    while (i < 4) {
+      switch (i) {
+        case 0:
+          nextGrid.push({
+            ...getNextGrid(
+              Direction.LEFT,
+              getDeepCloneGridCount($grid.value),
+              record.score
+            ),
+            direction: Direction.LEFT,
+          })
+          break
+        case 1:
+          nextGrid.push({
+            ...getNextGrid(
+              Direction.RIGHT,
+              getDeepCloneGridCount($grid.value),
+              record.score
+            ),
+            direction: Direction.RIGHT,
+          })
+          break
+        case 2:
+          nextGrid.push({
+            ...getNextGrid(
+              Direction.UP,
+              getDeepCloneGridCount($grid.value),
+              record.score
+            ),
+            direction: Direction.UP,
+          })
+          break
+        case 3:
+          nextGrid.push({
+            ...getNextGrid(
+              Direction.DOWN,
+              getDeepCloneGridCount($grid.value),
+              record.score
+            ),
+            direction: Direction.DOWN,
+          })
+          break
+
+        default:
+          break
+      }
+      i++
+    }
+
+    const { direction } = nextGrid.reduce(
+      (p, { grid, score, direction }) => {
+        const maxCount = getMaxCount(grid)
+        const emptySquare = grid.reduce((acc, cur) => {
+          return acc + cur.filter((item) => item === null).length
+        }, 0)
+        const maxScore = maxCount * 1000 + score * 100 + emptySquare
+        return maxScore > p.maxScore ? { maxScore, direction } : p
+      },
+      { direction: Direction.LEFT, maxScore: 0 }
+    )
+
+    manualMove(direction)
+    autoMove()
+  }, 300)
+}
+
+/** 手动操作 */
+function manualMove(dir: Direction) {
+  if (gameStatus.value !== GameStatus.normal) {
+    showGameStatusToast(gameStatus.value, toast)
     return
   }
 
-  switch (dir) {
-    case Direction.UP: {
-      for (let y = 0; y < GRID_SIZE.axisY; y++) {
-        for (let x = 0; x < GRID_SIZE.axisY; x++) {
-          if (getIsEmptySquare($grid.value[y][x].count)) {
-            continue
-          }
+  const { grid, score } = getNextGrid(
+    dir,
+    getDeepCloneGridCount($grid.value),
+    record.score
+  )
 
-          let currentY = y
-          let nextY = currentY - 1
-          while (true) {
-            if (nextY < 0) {
-              break
-            }
-            if (moveHandle([currentY, x], [nextY, x])) {
-              break
-            }
-            currentY = nextY
-            nextY--
-          }
-        }
-      }
-      break
-    }
-    case Direction.DOWN: {
-      for (let y = GRID_SIZE.axisY - 1; y >= 0; y--) {
-        for (let x = 0; x < GRID_SIZE.axisY; x++) {
-          if (getIsEmptySquare($grid.value[y][x].count)) {
-            continue
-          }
-
-          let currentY = y
-          let nextY = currentY + 1
-          while (true) {
-            if (nextY >= GRID_SIZE.axisY) {
-              break
-            }
-            if (moveHandle([currentY, x], [nextY, x])) {
-              break
-            }
-            currentY = nextY
-            nextY++
-          }
-        }
-      }
-      break
-    }
-    case Direction.LEFT: {
-      for (let x = 0; x < GRID_SIZE.axisY; x++) {
-        for (let y = 0; y < GRID_SIZE.axisY; y++) {
-          if (getIsEmptySquare($grid.value[y][x].count)) {
-            continue
-          }
-
-          let currentX = x
-          let nextX = currentX - 1
-          while (true) {
-            if (nextX < 0) {
-              break
-            }
-            if (moveHandle([y, currentX], [y, nextX])) {
-              break
-            }
-            currentX = nextX
-            nextX--
-          }
-        }
-      }
-      break
-    }
-    case Direction.RIGHT: {
-      for (let x = GRID_SIZE.axisY - 1; x >= 0; x--) {
-        for (let y = 0; y < GRID_SIZE.axisY; y++) {
-          if (getIsEmptySquare($grid.value[y][x].count)) {
-            continue
-          }
-
-          let currentX = x
-          let nextX = currentX + 1
-          while (true) {
-            if (nextX >= GRID_SIZE.axisY) {
-              break
-            }
-            if (moveHandle([y, currentX], [y, nextX])) {
-              break
-            }
-            currentX = nextX
-            nextX++
-          }
-        }
-      }
-      break
-    }
-
-    default:
-      break
+  for (const {
+    position: [y, x],
+    count,
+  } of getRandomCount(1, grid)) {
+    updateSquare(y, x, count, grid)
   }
 
-  const [
-    {
-      position: [y, x],
-      count,
-    },
-  ] = getRandomCount(1, $grid.value)
-  updateSquare(y, x, count)
-
-  gameStatus.value = getIsWinOrLoss($grid.value)
-  showGameStatusToast(gameStatus.value)
-
+  gameStatus.value = getIsWinOrLoss(grid)
+  showGameStatusToast(gameStatus.value, toast)
+  record.score = score
   record.step++
+  $grid.value = grid
 }
 
 function keyDownHandling(e: KeyboardEvent) {
@@ -217,7 +161,7 @@ function keyDownHandling(e: KeyboardEvent) {
     default:
       return
   }
-  move(dir)
+  manualMove(dir)
 }
 function registerEvent() {
   window.addEventListener('keydown', keyDownHandling)
@@ -233,7 +177,7 @@ function beginGame() {
     position: [y, x],
     count,
   } of getRandomCount(2, $grid.value)) {
-    updateSquare(y, x, count)
+    updateSquare(y, x, count, $grid.value)
   }
 }
 function init() {
@@ -256,7 +200,7 @@ init()
     </h3>
 
     <div
-      v-touchdir.prevent="move"
+      v-touchdir.prevent="manualMove"
       class="grid grid-cols-1 grid-rows-4 p-8px gap-8px"
       :style="{
         backgroundColor: tone.inverseColor,
@@ -281,12 +225,20 @@ init()
       </div>
     </div>
 
-    <button
-      class="mt-24px w-110px h-46px flex items-center justify-center rounded-md bg-#e56363 text-white outline-none border-none active:bg-#ce567b"
+    <div class="flex">
+      <button
+      class="mt-24px w-110px h-46px flex items-center justify-center rounded-md bg-#e56363 text-white outline-none border-none active:bg-#ce567b mr-12px"
       @click="beginGame"
     >
       New Game
     </button>
+    <button
+      class="mt-24px w-110px h-46px flex items-center justify-center rounded-md bg-#ce567b text-white outline-none border-none active:bg-#e56363"
+      @click="autoMove"
+    >
+      Auto Game
+    </button>
+    </div>
   </div>
 </template>
 
