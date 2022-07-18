@@ -17,3 +17,9 @@ export const INIT_BG_COLOR = '#ffd0ad'
 export const GRID_SIZE = { axisY: 4, axisX: 4 } as const
 
 export const WIN_COUNT = 2048
+
+export enum GameStatus {
+  normal,
+  win,
+  loss,
+}
