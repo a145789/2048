@@ -38,83 +38,83 @@ const tone = computed(() => ({
 
 let timer: number
 /** 自动操作 */
-function autoMove() {
-  if (gameStatus.value !== GameStatus.normal) {
-    clearTimeout(timer)
-    return
-  }
-  timer = setTimeout(() => {
-    const nextGrid: {
-      direction: Direction
-      grid: Grid
-      score: number
-    }[] = []
-    let i = 0
-    while (i < 4) {
-      switch (i) {
-        case 0:
-          nextGrid.push({
-            ...getNextGrid(
-              Direction.LEFT,
-              getDeepCloneGridCount($grid.value),
-              record.score
-            ),
-            direction: Direction.LEFT,
-          })
-          break
-        case 1:
-          nextGrid.push({
-            ...getNextGrid(
-              Direction.RIGHT,
-              getDeepCloneGridCount($grid.value),
-              record.score
-            ),
-            direction: Direction.RIGHT,
-          })
-          break
-        case 2:
-          nextGrid.push({
-            ...getNextGrid(
-              Direction.UP,
-              getDeepCloneGridCount($grid.value),
-              record.score
-            ),
-            direction: Direction.UP,
-          })
-          break
-        case 3:
-          nextGrid.push({
-            ...getNextGrid(
-              Direction.DOWN,
-              getDeepCloneGridCount($grid.value),
-              record.score
-            ),
-            direction: Direction.DOWN,
-          })
-          break
+// function autoMove() {
+//   if (gameStatus.value !== GameStatus.normal) {
+//     clearTimeout(timer)
+//     return
+//   }
+//   timer = setTimeout(() => {
+//     const nextGrid: {
+//       direction: Direction
+//       grid: Grid
+//       score: number
+//     }[] = []
+//     let i = 0
+//     while (i < 4) {
+//       switch (i) {
+//         case 0:
+//           nextGrid.push({
+//             ...getNextGrid(
+//               Direction.LEFT,
+//               getDeepCloneGridCount($grid.value),
+//               record.score
+//             ),
+//             direction: Direction.LEFT,
+//           })
+//           break
+//         case 1:
+//           nextGrid.push({
+//             ...getNextGrid(
+//               Direction.RIGHT,
+//               getDeepCloneGridCount($grid.value),
+//               record.score
+//             ),
+//             direction: Direction.RIGHT,
+//           })
+//           break
+//         case 2:
+//           nextGrid.push({
+//             ...getNextGrid(
+//               Direction.UP,
+//               getDeepCloneGridCount($grid.value),
+//               record.score
+//             ),
+//             direction: Direction.UP,
+//           })
+//           break
+//         case 3:
+//           nextGrid.push({
+//             ...getNextGrid(
+//               Direction.DOWN,
+//               getDeepCloneGridCount($grid.value),
+//               record.score
+//             ),
+//             direction: Direction.DOWN,
+//           })
+//           break
 
-        default:
-          break
-      }
-      i++
-    }
+//         default:
+//           break
+//       }
+//       i++
+//     }
 
-    const { direction } = nextGrid.reduce(
-      (p, { grid, score, direction }) => {
-        const maxCount = getMaxCount(grid)
-        const emptySquare = grid.reduce((acc, cur) => {
-          return acc + cur.filter((item) => item === null).length
-        }, 0)
-        const maxScore = maxCount * 1000 + score * 100 + emptySquare
-        return maxScore > p.maxScore ? { maxScore, direction } : p
-      },
-      { direction: Direction.LEFT, maxScore: 0 }
-    )
+//     const { direction } = nextGrid.reduce(
+//       (p, { grid, score, direction }) => {
+//         const maxCount = getMaxCount(grid)
+//         const emptySquare = grid.reduce((acc, cur) => {
+//           return acc + cur.filter((item) => item === null).length
+//         }, 0)
+//         const maxScore = maxCount * 1000 + score * 100 + emptySquare
+//         return maxScore > p.maxScore ? { maxScore, direction } : p
+//       },
+//       { direction: Direction.LEFT, maxScore: 0 }
+//     )
 
-    manualMove(direction)
-    autoMove()
-  }, 300)
-}
+//     manualMove(direction)
+//     autoMove()
+//   }, 300)
+// }
 
 /** 手动操作 */
 function manualMove(dir: Direction) {
@@ -227,17 +227,17 @@ init()
 
     <div class="flex">
       <button
-      class="mt-24px w-110px h-46px flex items-center justify-center rounded-md bg-#e56363 text-white outline-none border-none active:bg-#ce567b mr-12px"
-      @click="beginGame"
-    >
-      New Game
-    </button>
-    <button
+        class="mt-24px w-110px h-46px flex items-center justify-center rounded-md bg-#e56363 text-white outline-none border-none active:bg-#ce567b mr-12px"
+        @click="beginGame"
+      >
+        New Game
+      </button>
+      <!-- <button
       class="mt-24px w-110px h-46px flex items-center justify-center rounded-md bg-#ce567b text-white outline-none border-none active:bg-#e56363"
       @click="autoMove"
     >
       Auto Game
-    </button>
+    </button> -->
     </div>
   </div>
 </template>
